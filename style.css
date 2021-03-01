@@ -4,10 +4,11 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    background-color: rgb(42, 37, 42);
 }
 canvas {
     border: 2px solid black;
-    background-image: url('space.gif');
+    background-image: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.25)),  url('space.gif');
     background-position: top;
     background-repeat: repeat;
 }
