@@ -92,7 +92,7 @@ class Ball {
         this.damage -= 1;
     }
     isDead() {
-        if (this.y > (this.InitY + this.radius)) { 
+        if (this.y > (this.InitY + this.radius + 10)) {
             this.delete();
             return true;
         }
@@ -139,45 +139,62 @@ class Player {
     /* Para estas  variables, deberíamos pasar igual el ball.radius en vez de sumar "10"
     porque si la bola crece, cambia po */
     ballIsFrontColliding(ballX, ballY, ballRadius) {
-        return (ballX + ballRadius >= this.x - (this.width / 2) && ballX - ballRadius <= this.x + (this.width / 2) && ballY + ballRadius >= this.y);
+        return (ballX + ballRadius >= this.x - (this.width / 2) && ballX + ballRadius <= this.x + (this.width / 2) && ballY + ballRadius >= this.y);
     }
 }
 
-/* podríamos hacer la bola y el user globales en la clase poniendolos como this.ball = ball?XD */
 class Game {
-    /* El maxScore lo tomaríamos de localStorage, igual que el current lo mantendríamos
-    ahí como tal, hasta que se vuelva el maxScore */
-    constructor(maxScore, currentScore = 0, currentName = 'player', gameRound = 0, gameLives = 3, gameState = 'end', ballsAmount = 0) {
-        this.maxScore = maxScore;
+
+    constructor(currentScore = 0, currentName = 'player', gameRound = 1, gameLives = 3, ballsAmount = 1) {
+        this.maxScore;
+        this.nameMaxScore;
         this.currentScore = currentScore;
         this.currentName = currentName;
         this.gameRound = gameRound;
         this.gameLives = gameLives;
-        this.gameState = gameState;
         this.ballsAmount = ballsAmount;
         this.nextFrameID = 0; // esto sería el ballID
         this.userXposition = 0;
+        this.ball;
+        this.userPlatform;
+        this.bricks;
     }
-
     clearCanvas() {
         /** @type {CanvasRenderingContext2D}  */
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
     renderNewGame() {
         /** @type {CanvasRenderingContext2D}  */
-        const ball = this.initBall();
+        this.bricks = [];
+        const ball = this.initBall(-3, -3, 1);
         const user = this.initPlatform();
-        const drawingFunction = () => {
-            this.drawWaitingGame(ball, user);
-        }
-        this.drawInit(ball, user);
-        this.addEvents(window, 'mousemove', (event) => this.setUserPosition(event));
+        const brick = this.initBricks();
+        this.bricks.push(...brick);
+        const drawingFunction = () => this.drawWaitingGame();
+        this.ball = ball;
+        this.userPlatform = user;
+        this.drawInit();
+        this.addEvents(window, 'mousemove', event => this.setUserPosition(event));
         this.addEvents(window, 'mousemove', drawingFunction);
-        this.addEvents(canvas, 'click', this.drawStartedGame.bind(this, ball, user), { once: true });
-        this.addEvents(canvas, 'click', () =>  this.removeEvents(window, 'mousemove', drawingFunction), {once: true});
+        this.addEvents(canvas, 'click', () => this.drawStartedGame(), { once: true });
+        this.addEvents(canvas, 'click', () => this.removeEvents(window, 'mousemove', drawingFunction), { once: true });
     }
-    initBall() {
-        const ball = new Ball(-3, -3, 1);
+    initBricks() {
+        let bricksArray = [];
+        for (let index = 1; index <= 8; index++) {
+            for (let Yindex = 1; Yindex <= 3; Yindex++) {
+                let x = 10;
+                let y = 10;
+                let mult = 60;
+                let brick = new Brick(1, 50, 20, (x + (mult * index)), y + (mult * Yindex));
+                bricksArray.push(brick);   
+            }
+
+        }
+        return bricksArray;
+    }
+    initBall(xSpeed, ySpeed, dmg) {
+        const ball = new Ball(xSpeed, ySpeed, dmg);
         ball.getInitialPosition();
         return ball;
     }
@@ -190,46 +207,63 @@ class Game {
         let xUser = event.clientX;
         this.userXposition = +xUser;
     }
-    drawInit(ball, platformUser) {
-        ball.draw();
-        platformUser.draw();
+    drawInit() {
+        this.ball.draw();
+        this.userPlatform.draw();
+        this.bricks.forEach(brick => brick.draw());
     }
-    drawWaitingGame(ball, user) {
+    drawWaitingGame() {
         this.clearCanvas();
         let x = this.userXposition;
-        let userX = this.drawWaitingUser(user, x);
-        this.drawWaitingBall(ball, userX);
-        user.draw();
-        ball.draw();
+        let userX = this.drawWaitingUser(x);
+        this.drawWaitingBall(userX);
+        this.userPlatform.draw();
+        this.ball.draw();
+        this.bricks.forEach(brick => brick.draw());
     }
-    drawWaitingBall(ball, x) {
-        ball.moveOverPlatform(x);
+    drawWaitingBall(x) {
+        this.ball.moveOverPlatform(x);
     }
-    drawWaitingUser(user, x) {
-        return user.move(x);
+    drawWaitingUser(x) {
+        return this.userPlatform.move(x);
     }
-    drawStartedGame(ball, user) {
+    drawStartedGame() {
         this.clearCanvas();
-        if (user.ballIsFrontColliding(...ball.getNextPosition(), ball.radius)) ball.changeYspeed();
-        this.drawStartedBall(ball);
-        this.drawStartedUser(user);
-        if (!ball.isDead(this.nextFrameID)) {
-            this.nextFrameID = window.requestAnimationFrame(this.drawStartedGame.bind(this, ball, user));
+        if (this.userPlatform.ballIsFrontColliding(...this.ball.getNextPosition(), this.ball.radius)) this.ball.changeYspeed();
+        this.drawStartedBall(this.ball);
+        this.drawStartedUser(this.userPlatform);
+        this.bricks.forEach(brick => brick.draw());
+        this.bricks.forEach(brick => {
+            if (brick.ballIsFrontColliding(...this.ball.getNextPosition(), this.ball.radius)) {
+                let index = this.bricks.indexOf(brick);
+                this.bricks.splice(index, 1);
+                this.ball.changeYspeed();
+            } else if (brick.ballIsSideColliding(...this.ball.getNextPosition(), this.ball.radius)) {
+                let index = this.bricks.indexOf(brick);
+                this.bricks.splice(index, 1);
+                this.ball.changeXspeed();
+            }
+        });
+        if (!this.ball.isDead(this.nextFrameID)) {
+            this.nextFrameID = window.requestAnimationFrame(() => this.drawStartedGame());
         } else {
             window.cancelAnimationFrame(this.nextFrameID);
-            window.setTimeout(() => {
-                this.clearCanvas();
-                this.renderNewGame();
-            }, 500);
+            this.removeLife();
+            if (!this.isGameOver()) {
+                window.setTimeout(() => {
+                    this.clearCanvas();
+                    this.renderNewGame();
+                }, 500);
+            }
         }
     }
-    drawStartedBall(ball) {
-        ball.draw();
-        ball.move();
+    drawStartedBall() {
+        this.ball.draw();
+        this.ball.move();
     }
-    drawStartedUser(user) {
-        user.move(this.userXposition);
-        user.draw();
+    drawStartedUser() {
+        this.userPlatform.move(this.userXposition);
+        this.userPlatform.draw();
     }
     addEvents(objectToAttatch, eventType, eventFunction, eventOptions = {}) {
         objectToAttatch.addEventListener(eventType, eventFunction, eventOptions);
@@ -238,33 +272,73 @@ class Game {
         objectToAttatch.removeEventListener(eventType, eventFunction, eventOptions);
     }
     isGameOver() {
-        // check if all the balls
+        return (this.gameLives === 0);
     }
     addLife() {
-
+        this.gameLives += 1;
     }
     removeLife() {
-
+        this.gameLives -= 1;
     }
-    changeName() {
-
+    changeName(newName) {
+        this.changeName = newName.replace(/\W/g, '').slice(0, 5);
     }
     addNewMaxScore() {
-
+        // Acá agregaríamos una función para cambiarlo en la UI también
+        localStorage.setItem(this.currentName, this.currentScore);
     }
-    updateCurrentScore() {
-
+    updateCurrentScore(score) {
+        this.currentScore = score;
     }
-    changeGameState() {
-
+    getMaxScore() { // se supone que el entrie sería del tipo [ ['uwu', 10], ['awa', 20]   ]
+        const scores = Object.entries(localStorage).sort((a, b) => a[1] - b[1]);
+        this.nameMaxScore = scores[0][0];
+        this.maxScore = scores[0][1];
     }
-    getGameState() {
-
-    }
-
 }
 
-// UI 
+class Brick {
+    constructor(durability = 1, width = 50, height = 20, x, y) {
+        this.durability = durability;
+        this.width = width;
+        this.height = height;
+        this.x = x;
+        this.y = y;
+    }
+    draw() {
+        let brick = new Path2D();
+        brick.rect(this.x, this.y, this.width, this.height);
+        /** @type {CanvasRenderingContext2D}  */
+        ctx.fillStyle = 'yellow';
+        ctx.shadowColor = 'black';
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 5;
+        ctx.fill(brick);
+        ctx.shadowColor = 'transparent';
+    }
+    ballIsSideColliding(ballX, ballY, ballRadius) {
+        if (ballX + ballRadius == this.x && ballY >= this.y && ballY <= this.y + this.height || ballX + ballRadius == this.x + this.width && ballY >= this.y && ballY <= this.y + this.height) {
+            this.delete();
+            return true;
+        }
+        return false;
+    }
+    ballIsFrontColliding(ballX, ballY, ballRadius) {
+        if (ballX + ballRadius >= this.x && ballX + ballRadius <= this.x + this.width && ballY >= this.y && ballY <= this.y + this.height) {
+            this.delete();
+            return true;
+        }
+        return false;
+    }
+    delete() {
+        ctx.clearRect(this.x, this.y, this.width, this.height);
+    }
+}
 
-let game = new Game(0, 0, 'uwu', 1, 3, 'continue', 3);
+// UI // quizá deberíamos crear una nueva variable con el diámetro y no solo con el radio de la bola
+
+
+let game = new Game(0, 'uwu', 1, 3, 1);
 game.renderNewGame();
+
+/* Debería detectar si entre la posición actual y la posición siguiente hay un overlap de x/y para detectar la colisión */
