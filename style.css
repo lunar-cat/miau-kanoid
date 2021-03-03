@@ -8,7 +8,8 @@ body {
 }
 canvas {
     border: 2px solid black;
-    background-image: linear-gradient(rgba(19, 55, 100, 1), rgba(0, 255, 207, 1)) /*  url('space.gif') */;
+    background-image: url('back.png') ;
     background-position: top;
-    background-repeat: repeat;
+    background-repeat: no-repeat;
+    background-size: cover;
 }

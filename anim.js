@@ -42,10 +42,10 @@ class Ball {
         this.y += this.ySpeed;
     }
     isBorderColliding() {
-        if (this.x + this.xSpeed - this.radius < 0 || this.x + this.xSpeed + this.radius > canvas.width) {
+        if ((this.x) <= this.radius ||(canvas.width - this.x) <= this.radius) {
             this.changeXspeed();
         }
-        if (this.y + this.ySpeed - this.radius < 0 || this.y + this.xSpeed + this.radius > canvas.height) {
+        if ((this.y) <= this.radius || (canvas.height - this.y) <= this.radius) {
             this.changeYspeed();
         }
     }
@@ -69,7 +69,7 @@ class Ball {
         ctx.stroke(line);
         // para debug
 
-        ctx.clearRect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
+        ctx.clearRect(this.x - this.radius - 5, this.y - this.radius - 5, this.radius * 2 + 10, this.radius * 2 + 10);
     }
     increaseSize() {
         this.radius *= 2;
@@ -92,7 +92,7 @@ class Ball {
         this.damage -= 1;
     }
     isDead() {
-        if (this.y > (this.InitY + this.radius + 10)) {
+        if (this.y + this.ySpeed + this.radius >= canvas.height) {
             this.delete();
             return true;
         }
@@ -139,7 +139,21 @@ class Player {
     /* Para estas  variables, deberíamos pasar igual el ball.radius en vez de sumar "10"
     porque si la bola crece, cambia po */
     ballIsFrontColliding(ballX, ballY, ballRadius) {
-        return (ballX + ballRadius >= this.x - (this.width / 2) && ballX + ballRadius <= this.x + (this.width / 2) && ballY + ballRadius >= this.y);
+        let userX = this.x - this.width / 2;
+        let sideX, sideY;
+        if (ballY < (canvas.height / 4) * 3) return false;
+        if (ballX < userX) sideX = userX;
+        else if (ballX > userX + this.width) sideX = userX + this.width;
+        if (ballY < this.y) sideY = this.y;
+        else if (ballY > this.y + this.height) return false;
+
+        const distanceX = ballX - sideX || 0;
+        const distanceY = ballY - sideY || 0;
+        const totalDistance = Math.sqrt((distanceX * distanceX) + (distanceY * distanceY));
+        if (totalDistance <= ballRadius) {
+            return true;
+        }
+        return  false;
     }
 }
 
@@ -166,7 +180,7 @@ class Game {
     renderNewGame() {
         /** @type {CanvasRenderingContext2D}  */
         this.bricks = [];
-        const ball = this.initBall(-3, -3, 1);
+        const ball = this.initBall(-4, -4, 1);
         const user = this.initPlatform();
         const brick = this.initBricks();
         this.bricks.push(...brick);
@@ -179,15 +193,28 @@ class Game {
         this.addEvents(canvas, 'click', () => this.drawStartedGame(), { once: true });
         this.addEvents(canvas, 'click', () => this.removeEvents(window, 'mousemove', drawingFunction), { once: true });
     }
+    continueGame() {
+        const ball = this.initBall(-4, -4, 1);
+        const user = this.initPlatform();
+        const drawingFunction = () => this.drawWaitingGame();
+        this.ball = ball;
+        this.userPlatform = user;
+        this.drawInit();
+        this.addEvents(window, 'mousemove', event => this.setUserPosition(event));
+        this.addEvents(window, 'mousemove', drawingFunction);
+        this.addEvents(canvas, 'click', () => this.drawStartedGame(), { once: true });
+        this.addEvents(canvas, 'click', () => this.removeEvents(window, 'mousemove', drawingFunction), { once: true });
+    }
     initBricks() {
+        let bricksColors = ['yellow', 'brown', 'purple', 'orange', 'white'];
         let bricksArray = [];
         for (let index = 1; index <= 8; index++) {
-            for (let Yindex = 1; Yindex <= 3; Yindex++) {
-                let x = 10;
+            for (let Yindex = 1; Yindex <= 5; Yindex++) {
+                let x = 5;
                 let y = 10;
                 let mult = 60;
-                let brick = new Brick(1, 50, 20, (x + (mult * index)), y + (mult * Yindex));
-                bricksArray.push(brick);   
+                let brick = new Brick(1, 50, 20, (x + (mult * index)), y + (mult * Yindex), bricksColors[Yindex - 1]);
+                bricksArray.push(brick);
             }
 
         }
@@ -229,33 +256,39 @@ class Game {
     }
     drawStartedGame() {
         this.clearCanvas();
-        if (this.userPlatform.ballIsFrontColliding(...this.ball.getNextPosition(), this.ball.radius)) this.ball.changeYspeed();
         this.drawStartedBall(this.ball);
         this.drawStartedUser(this.userPlatform);
+        if (this.userPlatform.ballIsFrontColliding(...this.ball.getNextPosition(), this.ball.radius)) this.ball.changeYspeed();
         this.bricks.forEach(brick => brick.draw());
         this.bricks.forEach(brick => {
-            if (brick.ballIsFrontColliding(...this.ball.getNextPosition(), this.ball.radius)) {
+            let collision = brick.ballIsColliding(...this.ball.getNextPosition(), this.ball.radius);
+            if (collision[0]) {
+                if (collision[1] === 'x') this.ball.changeXspeed();
+                else this.ball.changeYspeed();
                 let index = this.bricks.indexOf(brick);
                 this.bricks.splice(index, 1);
-                this.ball.changeYspeed();
-            } else if (brick.ballIsSideColliding(...this.ball.getNextPosition(), this.ball.radius)) {
-                let index = this.bricks.indexOf(brick);
-                this.bricks.splice(index, 1);
-                this.ball.changeXspeed();
             }
         });
-        if (!this.ball.isDead(this.nextFrameID)) {
+        if (!this.ball.isDead(this.nextFrameID) && !this.isWin()) {
             this.nextFrameID = window.requestAnimationFrame(() => this.drawStartedGame());
         } else {
             window.cancelAnimationFrame(this.nextFrameID);
             this.removeLife();
-            if (!this.isGameOver()) {
+            if (!this.isGameOver() && !this.isWin()) {
                 window.setTimeout(() => {
                     this.clearCanvas();
-                    this.renderNewGame();
+                    this.continueGame();
+                }, 500);
+            } else {
+                window.setTimeout(() => {
+                    this.finishGame();
                 }, 500);
             }
         }
+    }
+    finishGame(){
+        this.clearCanvas();
+        this.renderNewGame();
     }
     drawStartedBall() {
         this.ball.draw();
@@ -273,6 +306,9 @@ class Game {
     }
     isGameOver() {
         return (this.gameLives === 0);
+    }
+    isWin(){
+        return (this.bricks.length === 0);
     }
     addLife() {
         this.gameLives += 1;
@@ -298,37 +334,42 @@ class Game {
 }
 
 class Brick {
-    constructor(durability = 1, width = 50, height = 20, x, y) {
+    constructor(durability = 1, width = 50, height = 20, x, y, brickColor) {
         this.durability = durability;
         this.width = width;
         this.height = height;
         this.x = x;
         this.y = y;
+        this.brickColor = brickColor;
     }
     draw() {
         let brick = new Path2D();
         brick.rect(this.x, this.y, this.width, this.height);
         /** @type {CanvasRenderingContext2D}  */
-        ctx.fillStyle = 'yellow';
+        ctx.fillStyle = this.brickColor;
         ctx.shadowColor = 'black';
         ctx.shadowOffsetX = 2;
         ctx.shadowOffsetY = 5;
         ctx.fill(brick);
         ctx.shadowColor = 'transparent';
     }
-    ballIsSideColliding(ballX, ballY, ballRadius) {
-        if (ballX + ballRadius == this.x && ballY >= this.y && ballY <= this.y + this.height || ballX + ballRadius == this.x + this.width && ballY >= this.y && ballY <= this.y + this.height) {
+    ballIsColliding(ballX, ballY, ballRadius) {
+        let sideX, sideY, typeOfCollide;
+        // revisamos si la bola está de lado izquierdo, derecho, arriba o abajo.
+        if (ballX < this.x) sideX = this.x;
+        else if (ballX > this.x + this.width) sideX = this.x + this.width;
+        if (ballY < this.y) sideY = this.y;
+        else if (ballY > this.y + this.height) sideY = this.y + this.height;
+
+        const distanceX = ballX - sideX || 0;
+        const distanceY = ballY - sideY || 0;
+        typeOfCollide = (distanceX === 0) ? 'y' : 'x';
+        const totalDistance = Math.sqrt((distanceX * distanceX) + (distanceY * distanceY));
+        if (totalDistance <= ballRadius) {
             this.delete();
-            return true;
+            return [true, typeOfCollide];
         }
-        return false;
-    }
-    ballIsFrontColliding(ballX, ballY, ballRadius) {
-        if (ballX + ballRadius >= this.x && ballX + ballRadius <= this.x + this.width && ballY >= this.y && ballY <= this.y + this.height) {
-            this.delete();
-            return true;
-        }
-        return false;
+        return [false, typeOfCollide];
     }
     delete() {
         ctx.clearRect(this.x, this.y, this.width, this.height);
@@ -340,5 +381,3 @@ class Brick {
 
 let game = new Game(0, 'uwu', 1, 3, 1);
 game.renderNewGame();
-
-/* Debería detectar si entre la posición actual y la posición siguiente hay un overlap de x/y para detectar la colisión */
