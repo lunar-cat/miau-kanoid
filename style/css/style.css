@@ -1,0 +1,51 @@
+.flex {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+}
+
+.flex-fd-c {
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+      -ms-flex-direction: column;
+          flex-direction: column;
+}
+
+.flex-jc-c {
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+}
+
+.flex-jc-sa {
+  -ms-flex-pack: distribute;
+      justify-content: space-around;
+}
+
+body {
+  margin: 0%;
+  padding: 0%;
+  width: 100vw;
+  height: 100vh;
+  background-color: #2a252a;
+}
+
+body > .header-game {
+  width: 600px;
+  font-size: 1.5rem;
+  color: white;
+  font-weight: bold;
+  font-family: "Press Start 2P", cursive;
+}
+
+body > canvas {
+  border: 2px solid black;
+  background-image: url("/style/img/back.png");
+  background-position: top;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+/*# sourceMappingURL=style.css.map */

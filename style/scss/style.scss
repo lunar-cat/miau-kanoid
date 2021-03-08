@@ -1,0 +1,31 @@
+$main-font: 'Press Start 2P', cursive;
+$main-background: rgb(42, 37, 42);
+
+.flex {
+    display: flex;
+    align-items: center;
+    &-fd-c {flex-direction: column;}
+    &-jc-c {justify-content: center;}
+    &-jc-sa {justify-content: space-around;}
+}
+body {
+    margin: 0%;
+    padding: 0%;
+    width: 100vw;
+    height: 100vh;
+    background-color: $main-background;
+    > .header-game {
+        width: 600px;
+        font-size: 1.5rem;
+        color: white;
+        font-weight: bold;
+        font-family: $main-font;
+    }
+    > canvas {
+        border: 2px solid black;
+        background-image: url('/style/img/back.png') ;
+        background-position: top;
+        background-repeat: no-repeat;
+        background-size: cover;
+    }
+}
