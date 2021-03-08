@@ -43,7 +43,7 @@ body > .header-game {
 
 body > canvas {
   border: 2px solid black;
-  background-image: url("miau-kanoid//style/img/back.png");
+  background-image: url("/miau-kanoid//style/img/back.png");
   background-position: top;
   background-repeat: no-repeat;
   background-size: cover;
